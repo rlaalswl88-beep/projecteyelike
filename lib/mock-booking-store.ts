@@ -77,7 +77,8 @@ export function preparePayment(reservationId: number) {
     return null;
   }
 
-  const orderId = `ORDER-ELK-${reservation.id}-${Date.now()}`;
+  const uniqueToken = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const orderId = `ORDER-ELK-${reservation.id}-${uniqueToken}`;
   const payment: PaymentRecord = {
     orderId,
     reservationId: reservation.id,

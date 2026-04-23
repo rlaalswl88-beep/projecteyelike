@@ -54,7 +54,11 @@
     "missingWarning": "必須情報が不足しています。最初からやり直してください。",
     "methodTitle": "支払い方法を選択",
     "methodCard": "カード",
-    "payButtonSelected": "{method}で支払う"
+    "payButtonSelected": "{method}で支払う",
+    "emailRequiredForForeign": "海外向け決済ではメールアドレスの入力が必要です。",
+    "emailForForeignLabel": "海外決済用メールアドレス",
+    "emailForForeignPlaceholder": "example@email.com",
+    "emailForForeignHelp": "Alipay/PayPalでの決済にはメールアドレスが必要です。"
   },
   "PaymentResult": {
     "titleSuccess": "決済承認処理",
@@ -69,6 +73,8 @@
     "errorMessage": "エラーメッセージ",
     "backToReservation": "予約へ戻る",
     "goHome": "トップへ戻る",
-    "testModeNote": "（テストキー連携）実際のカード売上は発生していません。"
+    "testModeNote": "（テストキー連携）実際のカード売上は発生していません。",
+    "titlePending": "決済処理待ち",
+    "descriptionPending": "海外決済の認証を処理中です。完了後に結果ページへ移動します。"
   }
 }

@@ -54,7 +54,11 @@
     "missingWarning": "Required reservation information is missing. Please start over.",
     "methodTitle": "Select payment method",
     "methodCard": "Card",
-    "payButtonSelected": "Pay with {method}"
+    "payButtonSelected": "Pay with {method}",
+    "emailRequiredForForeign": "An email is required for foreign easy-pay methods.",
+    "emailForForeignLabel": "Email for foreign payment",
+    "emailForForeignPlaceholder": "example@email.com",
+    "emailForForeignHelp": "An email is required to proceed with Alipay/PayPal payment."
   },
   "PaymentResult": {
     "titleSuccess": "Payment Confirmation",
@@ -69,6 +73,8 @@
     "errorMessage": "Error Message",
     "backToReservation": "Back to Reservation",
     "goHome": "Go to Home",
-    "testModeNote": "(Test key) No real card settlement occurred."
+    "testModeNote": "(Test key) No real card settlement occurred.",
+    "titlePending": "Payment Pending",
+    "descriptionPending": "Foreign payment authentication is in progress. You will be redirected after completion."
   }
 }

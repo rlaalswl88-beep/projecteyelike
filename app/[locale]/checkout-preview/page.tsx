@@ -1,7 +1,7 @@
 "use client";
 
 import {loadTossPayments} from "@tosspayments/tosspayments-sdk";
-import {useMemo, useState} from "react";
+import {useMemo, useRef, useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {useSearchParams} from "next/navigation";
 import {Link} from "@/i18n/navigation";
@@ -18,11 +18,15 @@ export default function CheckoutPreviewPage() {
   const time = searchParams.get("time") ?? "";
   const reservationId = Number(searchParams.get("reservationId") ?? "0");
   const reservationNo = searchParams.get("reservationNo") ?? "";
-  const orderId = searchParams.get("orderId") ?? "";
-  const amount = Number(searchParams.get("amount") ?? "0");
+  const initialOrderId = searchParams.get("orderId") ?? "";
+  const initialAmount = Number(searchParams.get("amount") ?? "0");
+  const [orderId, setOrderId] = useState(initialOrderId);
+  const [amount, setAmount] = useState(initialAmount);
   const [payStatus, setPayStatus] = useState<"idle" | "loading" | "failed">("idle");
   const [payErrorDetail, setPayErrorDetail] = useState("");
-  const [selectedMethod, setSelectedMethod] = useState<"CARD" | "ALIPAY" | "PAYPAL" | "PAYPAY">("CARD");
+  const [selectedMethod, setSelectedMethod] = useState<"CARD" | "ALIPAY" | "PAYPAL">("CARD");
+  const [foreignEmail, setForeignEmail] = useState(contactType === "email" ? contact.trim() : "");
+  const payRequestLockRef = useRef(false);
 
   const formattedDate = useMemo(() => {
     if (!date) return "-";
@@ -46,15 +50,14 @@ export default function CheckoutPreviewPage() {
       ? t("methodCard")
       : selectedMethod === "ALIPAY"
         ? "Alipay"
-        : selectedMethod === "PAYPAL"
-          ? "PayPal"
-          : "PayPay";
+        : "PayPal";
 
   const handleTossPayment = async () => {
-    if (missingRequiredValue || payStatus === "loading") {
+    if (missingRequiredValue || payStatus === "loading" || payRequestLockRef.current) {
       return;
     }
 
+    payRequestLockRef.current = true;
     setPayErrorDetail("");
     setPayStatus("loading");
     try {
@@ -63,26 +66,46 @@ export default function CheckoutPreviewPage() {
         throw new Error("missing_client_key");
       }
 
-      const tossPayments = await loadTossPayments(clientKey);
-      const payment = tossPayments.payment({
-        customerKey: `eyelike_${reservationId}`
-      });
-
       const contactValue = contact.trim();
-      const customerEmail = contactType === "email" ? contactValue : undefined;
+      const customerEmail = contactType === "email" ? contactValue : foreignEmail.trim();
       const customerMobilePhone = contactType === "phone" ? contactValue : undefined;
+
+      const prepareResponse = await fetch("/api/v1/payments/prepare", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({reservationId})
+      });
+      const prepareResult = (await prepareResponse.json()) as {
+        success: boolean;
+        data?: {orderId: string; amount: number};
+      };
+      if (!prepareResponse.ok || !prepareResult.success || !prepareResult.data) {
+        throw new Error("payment_prepare_failed");
+      }
+
+      const latestOrderId = prepareResult.data.orderId;
+      const latestAmount = prepareResult.data.amount;
+      setOrderId(latestOrderId);
+      setAmount(latestAmount);
+
+      const tossPayments = await loadTossPayments(clientKey);
+      const uniqueCustomerKey = `eyelike_${reservationId}_${latestOrderId.slice(-8)}`.slice(0, 50);
+      const payment = tossPayments.payment({
+        customerKey: uniqueCustomerKey
+      });
 
       const successUrl = `${window.location.origin}/${locale}/payment/success?reservationId=${reservationId}`;
       const failUrl = `${window.location.origin}/${locale}/payment/fail?reservationId=${reservationId}`;
+      const pendingUrl = `${window.location.origin}/${locale}/payment/pending?reservationId=${reservationId}`;
 
       if (selectedMethod === "CARD") {
         await payment.requestPayment({
           method: "CARD",
           amount: {
             currency: "KRW",
-            value: amount
+            value: latestAmount
           },
-          orderId,
+          orderId: latestOrderId,
           orderName: "EYELIKE 예약금",
           customerName: name,
           customerEmail,
@@ -93,21 +116,37 @@ export default function CheckoutPreviewPage() {
         return;
       }
 
+      const isForeignEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail);
+      if (!isForeignEmailValid) {
+        setPayErrorDetail(t("emailRequiredForForeign"));
+        setPayStatus("failed");
+        return;
+      }
+      const foreignCountry =
+        selectedMethod === "ALIPAY"
+          ? "CN"
+          : locale === "ja"
+            ? "JP"
+            : locale === "zh"
+              ? "CN"
+              : "KR";
+
       await payment.requestPayment({
         method: "FOREIGN_EASY_PAY",
         amount: {
           currency: "USD",
-          value: Math.max(1, Math.round(amount / 1300))
+          value: Math.max(1, Math.round(latestAmount / 1300))
         },
-        orderId,
+        orderId: latestOrderId,
         orderName: "EYELIKE 예약금",
         customerName: name,
         customerEmail,
         successUrl,
         failUrl,
+        pendingUrl,
         foreignEasyPay: {
           provider: selectedMethod,
-          country: locale === "zh" ? "CN" : locale === "ja" ? "JP" : "KR"
+          country: foreignCountry
         }
       });
     } catch (error: unknown) {
@@ -122,6 +161,8 @@ export default function CheckoutPreviewPage() {
       const detail = [errorCode, errorMessage].filter(Boolean).join(" - ");
       setPayErrorDetail(detail);
       setPayStatus("failed");
+    } finally {
+      payRequestLockRef.current = false;
     }
   };
 
@@ -173,7 +214,7 @@ export default function CheckoutPreviewPage() {
 
         <div className="mt-6 space-y-2">
           <p className="text-sm font-medium text-zinc-800">{t("methodTitle")}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => setSelectedMethod("CARD")}
@@ -210,20 +251,31 @@ export default function CheckoutPreviewPage() {
             >
               PayPal
             </button>
-            <button
-              type="button"
-              onClick={() => setSelectedMethod("PAYPAY")}
-              className={[
-                "rounded-lg border px-4 py-2 text-sm font-semibold transition",
-                selectedMethod === "PAYPAY"
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 bg-white text-zinc-800 hover:border-zinc-500"
-              ].join(" ")}
-            >
-              PayPay
-            </button>
           </div>
         </div>
+
+        {selectedMethod !== "CARD" && contactType !== "email" ? (
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <label htmlFor="foreignEmail" className="text-sm font-semibold text-zinc-800">
+              {t("emailForForeignLabel")}
+            </label>
+            <input
+              id="foreignEmail"
+              type="email"
+              value={foreignEmail}
+              onChange={(event) => {
+                setForeignEmail(event.target.value);
+                if (payStatus === "failed") {
+                  setPayStatus("idle");
+                  setPayErrorDetail("");
+                }
+              }}
+              placeholder={t("emailForForeignPlaceholder")}
+              className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 outline-none focus:border-zinc-500"
+            />
+            <p className="mt-2 text-xs text-zinc-600">{t("emailForForeignHelp")}</p>
+          </div>
+        ) : null}
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-between">
           <Link

@@ -54,7 +54,11 @@
     "missingWarning": "缺少必要预约信息，请重新开始。",
     "methodTitle": "选择支付方式",
     "methodCard": "银行卡",
-    "payButtonSelected": "使用{method}支付"
+    "payButtonSelected": "使用{method}支付",
+    "emailRequiredForForeign": "海外支付方式需要输入邮箱。",
+    "emailForForeignLabel": "海外支付邮箱",
+    "emailForForeignPlaceholder": "example@email.com",
+    "emailForForeignHelp": "使用 Alipay/PayPal 支付时需要邮箱。"
   },
   "PaymentResult": {
     "titleSuccess": "支付确认处理中",
@@ -69,6 +73,8 @@
     "errorMessage": "错误信息",
     "backToReservation": "返回预约",
     "goHome": "返回首页",
-    "testModeNote": "（测试密钥）未产生真实卡交易。"
+    "testModeNote": "（测试密钥）未产生真实卡交易。",
+    "titlePending": "支付处理中",
+    "descriptionPending": "正在进行海外支付认证，完成后将自动跳转到结果页面。"
   }
 }

@@ -54,7 +54,11 @@
     "missingWarning": "필수 예약 정보가 부족합니다. 처음부터 다시 진행해주세요.",
     "methodTitle": "결제수단 선택",
     "methodCard": "카드",
-    "payButtonSelected": "{method}로 결제 진행"
+    "payButtonSelected": "{method}로 결제 진행",
+    "emailRequiredForForeign": "해외 간편결제는 이메일 입력이 필요합니다.",
+    "emailForForeignLabel": "해외 결제용 이메일",
+    "emailForForeignPlaceholder": "example@email.com",
+    "emailForForeignHelp": "Alipay/PayPal 결제 진행을 위해 이메일이 필요합니다."
   },
   "PaymentResult": {
     "titleSuccess": "결제 승인 처리",
@@ -69,6 +73,8 @@
     "errorMessage": "에러 메시지",
     "backToReservation": "예약으로 돌아가기",
     "goHome": "첫 화면으로 이동",
-    "testModeNote": "(테스트 키 연동) 실제 카드 매출은 발생하지 않았습니다."
+    "testModeNote": "(테스트 키 연동) 실제 카드 매출은 발생하지 않았습니다.",
+    "titlePending": "결제 처리 대기",
+    "descriptionPending": "해외 결제 인증이 진행 중입니다. 인증 완료 후 결과 페이지로 이동합니다."
   }
 }
