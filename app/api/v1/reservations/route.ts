@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {createReservation} from "@/lib/mock-booking-store";
+import {createReservation, preparePayment} from "@/lib/mock-booking-store";
 
 type ReservationBody = {
   locale?: string;
@@ -21,15 +21,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const requiredValid =
-    body.locale &&
-    body.name &&
-    body.contact &&
-    body.visitDate &&
-    body.visitTime &&
-    (body.contactType === "phone" || body.contactType === "email");
-
-  if (!requiredValid) {
+  if (
+    !body.locale ||
+    !body.name ||
+    !body.contact ||
+    !body.visitDate ||
+    !body.visitTime ||
+    (body.contactType !== "phone" && body.contactType !== "email")
+  ) {
     return NextResponse.json(
       {success: false, error: {code: "INVALID_INPUT", message: "Required fields are missing."}},
       {status: 400}
@@ -45,12 +44,26 @@ export async function POST(request: Request) {
     visitTime: body.visitTime
   });
 
+  const paymentPrepare = preparePayment(reservation.id);
+  if (!paymentPrepare) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {code: "PAYMENT_PREPARE_FAILED", message: "Could not prepare payment for reservation."}
+      },
+      {status: 500}
+    );
+  }
+
   return NextResponse.json({
     success: true,
     data: {
       reservationId: reservation.id,
       reservationNo: reservation.reservationNo,
-      status: reservation.status
+      status: reservation.status,
+      orderId: paymentPrepare.payment.orderId,
+      amount: paymentPrepare.payment.amount,
+      currency: paymentPrepare.payment.currency
     }
   });
 }

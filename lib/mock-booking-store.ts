@@ -16,10 +16,13 @@ export type ReservationRecord = {
   createdAt: string;
 };
 
+export type PaymentCurrency = "KRW" | "USD";
+
 export type PaymentRecord = {
   orderId: string;
   reservationId: number;
   amount: number;
+  currency: PaymentCurrency;
   status: PaymentStatus;
   paymentKey?: string;
   approvedAt?: string;
@@ -71,18 +74,42 @@ export function createReservation(input: CreateReservationInput) {
   return reservation;
 }
 
-export function preparePayment(reservationId: number) {
+const USD_RATE_KRW = 1300;
+
+function krwToUsdTwoDecimals(krw: number) {
+  const raw = krw / USD_RATE_KRW;
+  return Math.max(0.01, Math.round(raw * 100) / 100);
+}
+
+function amountsMatchForConfirm(
+  stored: number,
+  input: number,
+  currency: PaymentCurrency
+) {
+  if (currency === "KRW") {
+    return stored === input;
+  }
+  return Math.abs(stored - input) < 0.0001;
+}
+
+export function preparePayment(
+  reservationId: number,
+  options?: {currency?: PaymentCurrency}
+) {
   const reservation = reservations.get(reservationId);
   if (!reservation) {
     return null;
   }
 
+  const currency: PaymentCurrency = options?.currency === "USD" ? "USD" : "KRW";
   const uniqueToken = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const orderId = `ORDER-ELK-${reservation.id}-${uniqueToken}`;
+  const amount = currency === "USD" ? krwToUsdTwoDecimals(DEPOSIT_KRW) : DEPOSIT_KRW;
   const payment: PaymentRecord = {
     orderId,
     reservationId: reservation.id,
-    amount: DEPOSIT_KRW,
+    amount,
+    currency,
     status: "READY"
   };
 
@@ -102,7 +129,7 @@ export function confirmPayment(input: {reservationId: number; orderId: string; p
     return {ok: false as const, reason: "NOT_FOUND"};
   }
 
-  if (payment.amount !== input.amount) {
+  if (!amountsMatchForConfirm(payment.amount, input.amount, payment.currency)) {
     reservation.status = "PAYMENT_FAILED";
     payment.status = "FAILED";
     return {ok: false as const, reason: "AMOUNT_MISMATCH"};

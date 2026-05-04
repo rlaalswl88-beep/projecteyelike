@@ -128,27 +128,21 @@ export default function ReservationPage() {
 
       const reservationResult = (await reservationResponse.json()) as {
         success: boolean;
-        data?: {reservationId: number; reservationNo: string};
+        data?: {
+          reservationId: number;
+          reservationNo: string;
+          orderId: string;
+          amount: number;
+          currency: string;
+        };
       };
 
       if (!reservationResponse.ok || !reservationResult.success || !reservationResult.data) {
         throw new Error("reservation_failed");
       }
 
-      const paymentResponse = await fetch("/api/v1/payments/prepare", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          reservationId: reservationResult.data.reservationId
-        })
-      });
-
-      const paymentResult = (await paymentResponse.json()) as {
-        success: boolean;
-        data?: {orderId: string; amount: number};
-      };
-
-      if (!paymentResponse.ok || !paymentResult.success || !paymentResult.data) {
+      const {reservationId, reservationNo, orderId, amount, currency} = reservationResult.data;
+      if (!orderId || typeof amount !== "number" || !currency) {
         throw new Error("payment_prepare_failed");
       }
 
@@ -158,10 +152,11 @@ export default function ReservationPage() {
         contact,
         date: selectedDate,
         time: selectedTime,
-        reservationId: String(reservationResult.data.reservationId),
-        reservationNo: reservationResult.data.reservationNo,
-        orderId: paymentResult.data.orderId,
-        amount: String(paymentResult.data.amount)
+        reservationId: String(reservationId),
+        reservationNo,
+        orderId,
+        amount: String(amount),
+        currency
       });
 
       router.push(`/checkout-preview?${params.toString()}`);
